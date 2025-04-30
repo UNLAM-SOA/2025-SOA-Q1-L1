@@ -1,5 +1,5 @@
 # Este repositorio se utilizará durante la cursada de SOA
-
+ 
 El repositorio esta conformado por tres directorios, los alumnos deberán almacenar lo desarrollado en sus actividades prácticas. A continuación se espécifica el contenido que debe tener cada directorio.
 
 - **ANDROID:** En este directorio se debe colocar el código fuente del proyecto desarrollado en Android Studio. 
