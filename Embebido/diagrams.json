@@ -1,0 +1,24 @@
+{
+    "version": 1,
+    "author": "KK",
+    "editor": "wokwi",
+    "parts": [
+      { "type": "wokwi-breadboard", "id": "bb1", "top": -243, "left": -45.2, "attrs": {} },
+      { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": -14.5, "left": 206.2, "attrs": {} },
+      {
+        "type": "wokwi-pushbutton",
+        "id": "btn1",
+        "top": 83,
+        "left": -48,
+        "attrs": { "color": "green", "xray": "1" }
+      }
+    ],
+    "connections": [
+      [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+      [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+      [ "r3:1", "led4:A", "green", [ "v0" ] ],
+      [ "led4:C", "esp:GND.1", "green", [ "v138.64", "h-88.39", "v102.35", "h600.84", "v-182.05" ] ],
+      [ "r3:2", "esp:D2", "green", [ "v99.14", "h278.51", "v-37.5" ] ]
+    ],
+    "dependencies": {}
+  }
