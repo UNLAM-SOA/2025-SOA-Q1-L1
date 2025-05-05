@@ -29,48 +29,72 @@
   }
 // ---------- END DEBUG ---------- //
 
-
 // ---------- BEGIN STATE MACHINE ---------- //
-#define MAX_STATES        3
-#define MAX_EVENTS        4
-#define MAX_TYPE_EVENTS   3
+#define MAX_STATES        5
+#define MAX_EVENTS        8
+#define MAX_TYPE_EVENTS   7
 
-enum states {ST_INIT, ST_IDLE, ST_ROT} current_state;
-String s_states [] = {"ST_INIT", "ST_IDLE", "ST_ROTATING"};
+enum states {ST_INIT, ST_IDLE, ST_ROT, ST_DSP, ST_ERR} current_state;
+String s_states [] = {"ST_INIT", "ST_IDLE", "ST_ROTATING", "ST_DISPATCHING", "ST_ERROR"};
 
-enum events {EV_CONT, EV_CFG, EV_IN, EV_TMATCH} new_event;
-String s_events [] = {"EV_CONT", "EV_CONFIG", "EV_INPUT", "EV_TIMEMATCH"};
+enum events {EV_CONT, EV_CFG, EV_IN, EV_TMATCH, EV_END, EV_TEXP, EV_BPRESS, EV_VOL} new_event;
+String s_events [] = {"EV_CONT", "EV_CONFIG", "EV_INPUT", "EV_TIME_MATCH", "EV_END_CARRY", "EV_TIME_EXPIRED", "EV_BUTTON_PRESSED", "EV_VOLUMEN"};
 
 void init_();
-void input();
 void match();
-void none();
+void rotate();
+void dispatch();
+void success();
 void error();
+void unnotified();
+void volumen();
+void reset();
+void none();
 
 typedef void (*transition)();
 transition state_table[MAX_STATES][MAX_EVENTS] = {
-  {none,     init_,     none,       none},              // ST_INIT
-  {none,     none,      input,      match},             // ST_IDLE
-  {none,     none,      none,       none},              // ST_ROTATING
-// EV_CONT,  EV_CFG,    EV_INPUT    EV_TMATCH
+  {none,     init_,     none,       none,       none,     none,         none,       none},          // ST_INIT
+  {none,     none,      match,      rotate,     none,     none,         none,       volumen},       // ST_IDLE
+  {none,     none,      none,       none,       dispatch, error,        none,       none},          // ST_ROTATING
+  {none,     none,      none,       none,       none,     unnotified,   success,    none},          // ST_DISPATCHING
+  {none,     none,      none,       none,       none,     none,         reset,      none}           // ST_ERROR
+//EV_CONT    EV_CFG,    EV_INPUT    EV_TMATCH   EV_END    EV_TEXP       EV_BPRESS   EV_VOL
 };
 
 bool wifi_sensor(unsigned long ct);
 bool input_listener(unsigned long ct);
 bool scheduled(unsigned long ct);
+bool end_carry_sensor(unsigned long ct);
+bool timer_sensor(unsigned long ct);
+bool button_sensor(unsigned long ct);
+bool pot_sensor(unsigned long ct);
 
 typedef bool (*eventType)(unsigned long ct);
-eventType event_type[MAX_TYPE_EVENTS] = {wifi_sensor, input_listener, scheduled};
+eventType event_type[MAX_TYPE_EVENTS] = {wifi_sensor, input_listener, scheduled, end_carry_sensor, timer_sensor, button_sensor, pot_sensor};
 // ---------- END STATE MACHINE ---------- //
 
 // ---------- BEGIN CONSTANTS ---------- //
+#define PIN_BUZZER            32  
+#define PIN_POT               34 
+#define PIN_LED_MOTOR         26  
+#define PIN_LED_DIRECTION     25 
+#define PIN_BTN               14 
+#define PIN_BTN_END           4
+
+#define BUZZER_IN_MIN         0
+#define BUZZER_IN_MAX         4095
+#define BUZZER_OUT_MIN        100
+#define BUZZER_OUT_MAX        2000
+
 #define UMBRAL_DIFF_TIMEOUT   200
 #define UMBRAL_DIFF_TIMES     5
+#define UMBRAL_COUNTDOWN      10
 
-#define TS_CHANGE_STATE       50
+#define TS_CHANGE_STATE       500
+#define TS_COUNTDOWN          1000
 
-#define GM_OFFSET_ARG -10800
-#define DAY_LIGHT_OFFSET 0 
+#define GM_OFFSET_ARG         -10800
+#define DAY_LIGHT_OFFSET      0 
 
 const char* ssid = "Wokwi-GUEST";
 const char* password = "";
@@ -88,6 +112,8 @@ const char* ntpServer = "pool.ntp.org";
 bool timeout;
 long lct;
 short last_index_type_sensor  = 0;
+int countdown                 = 0;
+int pot_value                 = 500;
 
 struct tm user_time;
 ESP32Time rtc;
@@ -95,35 +121,131 @@ ESP32Time rtc;
 long ts_wifi                  = 0;
 long ts_input                 = -1;
 long ts_check_time            = -1;
+long ts_end_carry             = -1;
+long ts_timer                 = -1;
+long ts_button                = -1;
+long ts_pot                   = -1;
 // ---------- END VARIABLES ---------- //
+
+// ---------- BEGIN FUNCTIONS ---------- //
+bool is_valid_date(String input);
+void motor_on();
+void motor_off();
+void left_rotate_on();
+void left_rotate_off();
+void buzzer_on();
+void buzzer_off();
+
+// ---------- END FUNCTIONS ---------- //
 
 // ---------- BEGIN ACTIONS ---------- //
 void init_(){
   ts_wifi = -1;
   ts_input = 0;
+  ts_pot = 0;
+
+  DebugPrint("Ingrese fecha/hora de la toma. (YYYY-MM-DD HH:MM:SS)");
 
   current_state = ST_IDLE;
 }
 
-void input()
+void match()
 {
   ts_input = -1;
   ts_check_time = 0;
 }
 
-void match()
+void rotate()
 {
+  motor_on();
+  left_rotate_on();
+
   ts_check_time = -1;
+  ts_pot = -1;
+  ts_end_carry = 0;
+  ts_timer = 0;
+  countdown = 0;
 
   current_state = ST_ROT;
+  new_event = EV_CONT;
+}
+
+void dispatch()
+{
+  motor_off();
+  left_rotate_off();
+  buzzer_on();
+
+  ts_end_carry = -1;
+  ts_timer = 0;
+  countdown = 0;
+  ts_button = 0;
+
+  current_state = ST_DSP;
+  new_event = EV_CONT;
+}
+
+void success()
+{
+  buzzer_off();
+
+  ts_timer = -1;
+  ts_button = -1;
+  ts_input = 0;
+  ts_pot = 0;
+
+  DebugPrint("Ingrese fecha/hora de la toma. (YYYY-MM-DD HH:MM:SS)");
+
+  current_state = ST_IDLE;
+}
+
+void unnotified()
+{
+  buzzer_off();
+
+  ts_timer = -1;
+  ts_button = -1;
+  ts_input = 0;
+  ts_pot = 0;
+
+  DebugPrint("Ingrese fecha/hora de la toma. (YYYY-MM-DD HH:MM:SS)");
+
+  current_state = ST_IDLE;
+}
+
+void error()
+{
+  motor_off();
+  left_rotate_off();
+
+  ts_timer = -1;
+  ts_end_carry = -1;
+  ts_button = 0;
+  
+  current_state = ST_ERR;
+}
+
+void volumen()
+{
+  pot_value = analogRead(PIN_POT);
+
+  DebugPrint(pot_value);
+}
+
+void reset()
+{
+  ts_input = 0;
+  ts_pot = 0;
+  ts_timer = -1;
+  ts_button = -1;
+
+  DebugPrint("Ingrese fecha/hora de la toma. (YYYY-MM-DD HH:MM:SS)");
+
+  current_state = ST_IDLE;
 }
 
 void none()
 {
-}
-
-void error(){
-  DebugPrint("ERROR DETECTADO!");
 }
 
 void do_init()
@@ -131,10 +253,19 @@ void do_init()
   Serial.begin(115200);
   WiFi.begin(ssid, password);
 
+  pinMode(PIN_BUZZER, OUTPUT);
+  pinMode(PIN_POT, INPUT);
+  pinMode(PIN_LED_MOTOR, OUTPUT);
+  pinMode(PIN_LED_DIRECTION, OUTPUT);
+  pinMode(PIN_BTN, INPUT);
+  pinMode(PIN_BTN_END, INPUT);
+
   DebugPrintState(s_states[current_state], s_events[new_event]);
 
   current_state = ST_INIT;
   
+  pot_value = 500;
+
   timeout = false;
   lct = millis();
 }
@@ -153,7 +284,6 @@ bool wifi_sensor(unsigned long ct)
 
       if (WiFi.status() == WL_CONNECTED) 
       {
-        //DebugPrint("WIFI conectado");
         struct tm time_system;
         configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
         
@@ -164,8 +294,6 @@ bool wifi_sensor(unsigned long ct)
 
           WiFi.disconnect(true);
           WiFi.mode(WIFI_OFF);
-          //DebugPrint("WIFI desconectado");
-          
 
           new_event = EV_CFG;
           return true;
@@ -223,7 +351,9 @@ bool scheduled(unsigned long ct)
       time_t now = rtc.getEpoch();
 
       int dt = (now - user_timestamp);
+
       DebugPrint(dt);
+      
       if(abs(dt) < UMBRAL_DIFF_TIMES)
       {
         new_event = EV_TMATCH;
@@ -234,12 +364,105 @@ bool scheduled(unsigned long ct)
 
   return false;
 }
+
+bool end_carry_sensor(unsigned long ct)
+{
+  if(ts_end_carry >= 0)
+  {
+    int diff = (ct - ts_end_carry);
+    
+    if(diff >= TS_CHANGE_STATE)
+    {
+      ts_end_carry = ct;
+
+      int state = digitalRead(PIN_BTN_END);
+
+      if(state == HIGH)
+      {
+        new_event = EV_END;
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+bool timer_sensor(unsigned long ct)
+{
+  if(ts_timer >= 0)
+  {
+    int diff = (ct - ts_timer);
+    
+    if(diff >= TS_COUNTDOWN)
+    {
+      ts_timer = ct;
+      countdown += 1;
+
+      if(countdown >= UMBRAL_COUNTDOWN)
+      {
+        new_event = EV_TEXP;
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+bool button_sensor(unsigned long ct)
+{
+  if(ts_button >= 0)
+  {
+    int diff = (ct - ts_button);
+    
+    if(diff >= TS_CHANGE_STATE)
+    {
+      ts_button = ct;
+
+      int state = digitalRead(PIN_BTN);
+
+      if(state == HIGH)
+      {
+        new_event = EV_BPRESS;
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+bool pot_sensor(unsigned long ct)
+{
+  if(ts_pot >= 0)
+  {
+    int diff = (ct - ts_pot);
+    
+    if(diff >= TS_CHANGE_STATE)
+    {
+      ts_pot = ct;
+
+      int pot_value_now = analogRead(PIN_POT); 
+
+      if(pot_value_now != pot_value)
+      {
+        new_event = EV_VOL;
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 // ---------- END EVENTS ---------- //
 
-// 
-bool is_valid_date(String input) {
+// ---------- BEGIN FUNCTIONS ---------- //
+bool is_valid_date(String input) 
+{
   input.trim();
 
+  memset(&user_time, 0, sizeof(user_time));
   int user_year, user_month, user_day, user_hour, user_min, user_sec;
 
   if (sscanf(input.c_str(), "%d-%d-%d %d:%d:%d", 
@@ -253,8 +476,6 @@ bool is_valid_date(String input) {
     user_time.tm_sec  = user_sec;
     user_time.tm_isdst = CONFIG_TIME;
 
-    /*Serial.printf("%04d-%02d-%02d %02d:%02d:%02d\n",
-                  user_year, user_month, user_day, user_hour, user_min, user_sec);*/
     return true;
   } 
   else 
@@ -264,6 +485,39 @@ bool is_valid_date(String input) {
   }
 }
 
+void left_rotate_on()
+{
+  digitalWrite(PIN_LED_DIRECTION, HIGH);
+}
+
+void left_rotate_off()
+{
+  digitalWrite(PIN_LED_DIRECTION, LOW);
+}
+
+void motor_on()
+{
+  digitalWrite(PIN_LED_MOTOR, HIGH);
+}
+
+void motor_off()
+{
+  digitalWrite(PIN_LED_MOTOR, LOW);
+}
+
+void buzzer_on()
+{
+  int frecuency = map(pot_value, BUZZER_IN_MIN, BUZZER_IN_MAX, BUZZER_OUT_MIN, BUZZER_OUT_MAX); 
+  tone(PIN_BUZZER, frecuency);
+}
+
+void buzzer_off()
+{
+  noTone(PIN_BUZZER);
+}
+// ---------- END FUNCTIONS ---------- //
+
+// ---------- BEGIN STATE MACHINE ---------- //
 void get_new_event()
 {
   short index = 0;
@@ -308,7 +562,9 @@ void do_event()
     DebugPrint("Error, Estado o Evento fuera de rango.");
   }
 }
+// ---------- END STATE MACHINE ---------- //
 
+// ---------- BEGIN ESP32 ---------- //
 void setup() 
 {
   do_init();
@@ -318,3 +574,4 @@ void loop()
 {
   do_event();
 }
+// ---------- END ESP32 ---------- //
