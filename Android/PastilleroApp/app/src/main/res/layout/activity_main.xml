@@ -14,17 +14,17 @@
         android:text="No hay horarios agendados"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.506"
+        app:layout_constraintHorizontal_bias="0.835"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/lvScheduleList"
-        app:layout_constraintVertical_bias="0.14" />
+        app:layout_constraintVertical_bias="0.156" />
 
     <Button
         android:id="@+id/btnViewHistory"
         android:layout_width="138dp"
         android:layout_height="58dp"
         android:layout_marginBottom="88dp"
-        android:text="Historial"
+        android:text="Ver historial"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.115"
@@ -42,6 +42,7 @@
         android:tag="+"
         android:textAlignment="center"
         android:textDirection="inherit"
+        android:tint="#DE8484"
         android:visibility="visible"
         app:backgroundTint="#8BC34A"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -49,18 +50,18 @@
         app:layout_constraintHorizontal_bias="0.873"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.887"
+        app:layout_constraintVertical_bias="0.868"
         app:srcCompat="@android:drawable/ic_input_add" />
 
     <ListView
         android:id="@+id/lvScheduleList"
-        android:layout_width="580dp"
-        android:layout_height="295dp"
+        android:layout_width="407dp"
+        android:layout_height="286dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.494"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.078" />
+        app:layout_constraintVertical_bias="0.035" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

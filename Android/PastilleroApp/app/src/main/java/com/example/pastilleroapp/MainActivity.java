@@ -9,14 +9,17 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 import java.util.ArrayList;
 import java.util.List;
+import android.util.Log;
 
 public class MainActivity extends Activity {
-
+    private static final String TAG = "MainActivity";
     private ListView lvScheduleList;
     private TextView tvEmptyMessage;
-    private Button btnAddSchedule;
+    private FloatingActionButton btnAddSchedule;
     private Button btnViewHistory;
 
     private List<ScheduledTime> schedulesList;
@@ -26,6 +29,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "Inicializamos la interfaz principal.");
         setContentView(R.layout.activity_main);
 
         lvScheduleList = findViewById(R.id.lvScheduleList);
