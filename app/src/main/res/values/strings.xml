@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">PastilleroApp</string>
+    <string name="qweq">qweq</string>
+    <string name="no_hay_horarios_agendados">No hay horarios agendados</string>
+    <string name="ver_historial">Ver historial</string>
+    <string name="no_hay_registros_en_el_historial">No hay registros en el historial</string>
+</resources>
