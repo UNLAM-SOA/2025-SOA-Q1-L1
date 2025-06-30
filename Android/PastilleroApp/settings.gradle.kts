@@ -21,4 +21,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "PastilleroApp"
 include(":app")
- 

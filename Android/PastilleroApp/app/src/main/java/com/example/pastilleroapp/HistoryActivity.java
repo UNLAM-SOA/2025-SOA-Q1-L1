@@ -1,17 +1,22 @@
 package com.example.pastilleroapp;
 
-import android.app.Activity;
 import android.os.Bundle;
-import android.view.View;
+
+import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.view.View;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class HistoryActivity extends Activity {
-
+public class HistoryActivity extends AppCompatActivity {
     private ListView lvHistoryList;
     private TextView tvHistoryEmptyMessage;
     private List<String> historyList;
@@ -20,7 +25,14 @@ public class HistoryActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_history);
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.history), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
 
         lvHistoryList = findViewById(R.id.lvHistoryList);
         tvHistoryEmptyMessage = findViewById(R.id.tvHistoryEmptyMessage);
