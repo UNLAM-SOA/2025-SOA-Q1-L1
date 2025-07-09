@@ -33,7 +33,7 @@ Sistema automatizado de dispensación de medicamentos que utiliza un mecanismo r
 
 ### Codigo Fuente
 
-[ESP32](Embebido)
+- [ESP32](Embebido)
 
 ---
 
@@ -52,7 +52,7 @@ Aplicación Android que funciona como interfaz del usuario para gestionar la rut
 
 ### Codigo Fuente
 
-[Android](Android)
+- [Android](Android)
 
 ---
 
